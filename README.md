@@ -26,7 +26,7 @@
 - `requirements.txt` — список необходимых библиотек
 
 ## 📑 Ссылка на результат
-**Демонстрация Mini App:** [https://n1sh1k.github.io/Raspisanie/web/]
+**Демонстрация Mini App:** https://n1sh1k.github.io/Raspisanie/web/
 
 ## 🚀 Установка и запуск
 ```bash

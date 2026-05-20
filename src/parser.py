@@ -1,37 +1,42 @@
 import pandas as pd
 
 class ScheduleParser:
-    """Обработка сетки расписания"""
     def __init__(self, file_path):
-        """Инициализация парсера :param file_path: путь к скачанному файлу"""
         self.file_path = file_path
 
-    def get_clean_data(self):
-        """Чтение файла и удаление пустых строк"""
-        df = pd.read_excel(self.file_path, engine='xlrd', header=None)
-        return df
-
     def parse(self):
-        """Разбор сетки файла"""
-        df = self.get_clean_data()
-        schedule = []
-
-        for col_idx in range(2, df.shape[1]):
-            group_name = str(df.iloc[7, col_idx]).strip()
-            
-            if len(group_name) < 2 or "nan" in group_name.lower():
+        df = pd.read_excel(self.file_path, engine='xlrd', header=None)
+        result = []
+        
+        days_list = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
+        current_day = "Неизвестно"
+        
+        # Поиск групп
+        group_row_idx = 7 
+        groups = df.iloc[group_row_idx, :].tolist()
+        
+        for row_idx in range(group_row_idx + 1, len(df)):
+            # Проверка
+            first_col_val = str(df.iloc[row_idx, 0]).strip()
+            if first_col_val in days_list:
+                current_day = first_col_val
                 continue
 
-            for row_idx in range(9, len(df)):  # Пары начинаются ниже
-                lesson = str(df.iloc[row_idx, col_idx]).strip()
-                
-                if lesson and "nan" not in lesson.lower():
-                    # Сбор данных
-                    schedule.append({
+            # Номер пары
+            slot_raw = str(df.iloc[row_idx, 1]).strip()
+            slot = slot_raw if slot_raw.isdigit() else "1"
+
+            for col_idx, group_name in enumerate(groups):
+                group_name = str(group_name).strip()
+                if "-" not in group_name or len(group_name) < 3:
+                    continue
+
+                lesson_data = str(df.iloc[row_idx, col_idx]).strip()
+                if lesson_data and lesson_data.lower() != 'nan' and len(lesson_data) > 3:
+                    result.append({
+                        "day": current_day,
                         "group": group_name,
-                        "lesson": lesson,
-                        "row": row_idx,
-                        "col": col_idx
+                        "lesson": lesson_data.replace('\n', ' '),
+                        "slot": slot
                     })
-        
-        return schedule
+        return result

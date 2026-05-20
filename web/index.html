@@ -3,46 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расписание занятий</title>
+    <title>Расписание АППК</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); padding: 10px; }
-        .card { background: var(--tg-theme-secondary-bg-color); border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        h2 { margin-top: 0; font-size: 18px; color: var(--tg-theme-link-color); }
-        .lesson { font-size: 14px; border-left: 3px solid var(--tg-theme-button-color); padding-left: 10px; }
-        .room { font-weight: bold; color: var(--tg-theme-hint-color); }
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --accent: #3b82f6;
+            --hint: #8e8e93;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .header { color: var(--accent); font-weight: bold; font-size: 24px; margin-bottom: 20px; }
+        
+        select {
+            width: 100%; max-width: 400px;
+            padding: 12px; margin-bottom: 10px;
+            border-radius: 12px; border: 1px solid #ddd;
+            font-size: 16px; background: white;
+            appearance: none; outline: none;
+        }
+
+        .schedule-list { width: 100%; max-width: 400px; margin-top: 10px; }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--accent); /* Синяя полоска */
+        }
+        .pair-num { color: var(--hint); font-size: 13px; margin-bottom: 5px; }
+        .subject { font-weight: bold; font-size: 16px; margin-bottom: 5px; line-height: 1.3; }
+        .teacher { color: #666; font-size: 14px; }
+        .empty { text-align: center; color: var(--hint); margin-top: 40px; }
     </style>
 </head>
 <body>
-    <div id="schedule-container">Загрузка расписания...</div>
+    <div class="header">Расписание занятий</div>
+
+    <select id="groupSelect"><option value="">Выберите группу...</option></select>
+    <select id="daySelect">
+        <option value="Понедельник">Понедельник</option>
+        <option value="Вторник">Вторник</option>
+        <option value="Среда">Среда</option>
+        <option value="Четверг">Четверг</option>
+        <option value="Пятница">Пятница</option>
+        <option value="Суббота">Суббота</option>
+    </select>
+
+    <div id="container" class="schedule-list"></div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // На весь экран
+        tg.expand();
 
-        async function loadSchedule() {
+        let fullData = [];
+
+        async function init() {
             try {
-                // Путь к JSON 
                 const response = await fetch('result.json');
-                const data = await response.json();
-                const container = document.getElementById('schedule-container');
-                container.innerHTML = '';
+                fullData = await response.json();
 
-                data.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'card';
-                    div.innerHTML = `
-                        <h2>Группа: ${item.group}</h2>
-                        <div class="lesson">${item.lesson}</div>
-                        <div class="room">Пара №${item.slot}</div>
-                    `;
-                    container.appendChild(div);
+                // Заполнение списка групп
+                const groups = [...new Set(fullData.map(item => item.group))].sort();
+                const select = document.getElementById('groupSelect');
+                groups.forEach(g => {
+                    let opt = document.createElement('option');
+                    opt.value = g; opt.innerHTML = g;
+                    select.appendChild(opt);
                 });
+
+                // Проверка изменений
+                document.getElementById('groupSelect').addEventListener('change', render);
+                document.getElementById('daySelect').addEventListener('change', render);
             } catch (e) {
-                document.getElementById('schedule-container').innerText = 'Ошибка загрузки данных.';
+                console.error("Ошибка загрузки данных", e);
             }
         }
-        loadSchedule();
+
+        function render() {
+            const group = document.getElementById('groupSelect').value;
+            const day = document.getElementById('daySelect').value;
+            const container = document.getElementById('container');
+            container.innerHTML = '';
+
+            if (!group) return;
+
+            const filtered = fullData.filter(i => i.group === group && i.day === day);
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<div class="empty">Пар не найдено</div>';
+                return;
+            }
+
+            // Сортировка по номеру пары
+            filtered.sort((a, b) => a.slot - b.slot).forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.innerHTML = `
+                    <div class="pair-num">Пара ${item.slot}</div>
+                    <div class="subject">${item.lesson}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        init();
     </script>
 </body>
 </html>
