@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расписание занятий</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body { font-family: sans-serif; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); padding: 10px; }
+        .card { background: var(--tg-theme-secondary-bg-color); border-radius: 10px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h2 { margin-top: 0; font-size: 18px; color: var(--tg-theme-link-color); }
+        .lesson { font-size: 14px; border-left: 3px solid var(--tg-theme-button-color); padding-left: 10px; }
+        .room { font-weight: bold; color: var(--tg-theme-hint-color); }
+    </style>
+</head>
+<body>
+    <div id="schedule-container">Загрузка расписания...</div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // На весь экран
+
+        async function loadSchedule() {
+            try {
+                // Путь к JSON 
+                const response = await fetch('result.json');
+                const data = await response.json();
+                const container = document.getElementById('schedule-container');
+                container.innerHTML = '';
+
+                data.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'card';
+                    div.innerHTML = `
+                        <h2>Группа: ${item.group}</h2>
+                        <div class="lesson">${item.lesson}</div>
+                        <div class="room">Пара №${item.slot}</div>
+                    `;
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                document.getElementById('schedule-container').innerText = 'Ошибка загрузки данных.';
+            }
+        }
+        loadSchedule();
+    </script>
+</body>
+</html>
