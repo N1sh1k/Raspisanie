@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расписание АППК</title>
+    <title>Расписание занятий</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -54,84 +54,88 @@
     <script>
         let scheduleData = {};
 
-        // Загрузка данных
-        async function load() {
-            try {
-                const response = await fetch('result.json?v=' + Date.now());
-                scheduleData = await response.json();
-                init();
-            } catch (e) {
-                console.error(e);
-                document.getElementById('scheduleContainer').innerHTML = 
-                    `<div class="text-center text-red-500 py-10">Ошибка загрузки данных (result.json не найден)</div>`;
-            }
-        }
-
-        function init() {
-            const groupSelect = document.getElementById('groupSelect');
-            let allGroups = new Set();
-            Object.values(scheduleData).forEach(dayGroups => {
-                Object.keys(dayGroups).forEach(g => allGroups.add(g));
-            });
-
-            // Очищение и заполнение списка
-            groupSelect.innerHTML = '<option value="">Выберите группу...</option>';
-            [...allGroups].sort().forEach(g => {
-                let opt = document.createElement('option');
-                opt.value = g; opt.innerText = g;
-                groupSelect.appendChild(opt);
-            });
-
-            groupSelect.onchange = render;
-            document.getElementById('daySelect').onchange = render;
-        }
-
-        function render() {
-            const day = document.getElementById('daySelect').value;
-            const group = document.getElementById('groupSelect').value;
-            const container = document.getElementById('scheduleContainer');
-            
-            if (!group) return;
-            container.innerHTML = '';
-
-            if (!scheduleData[day] || !scheduleData[day][group] || Object.keys(scheduleData[day][group]).length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-20 opacity-40">
-                        <div class="text-4xl mb-2">🏖️</div>
-                        <p>Занятий нет</p>
-                    </div>`;
-                return;
+            async function load() {
+                try {
+                    const response = await fetch('result.json?v=' + Date.now());
+                    scheduleData = await response.json();
+                    console.log("Данные загружены:", scheduleData); // Для отладки
+                    init();
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('scheduleContainer').innerHTML = 
+                        `<div class="text-center text-red-500 py-10">Ошибка: файл result.json не найден. Сначала запустите main.py</div>`;
+                }
             }
 
-            const lessons = scheduleData[day][group];
-            
-            // Сортировка пар
-            Object.keys(lessons).sort((a, b) => parseInt(a) - parseInt(b)).forEach(slot => {
-                const fullInfo = lessons[slot];
-                const parts = fullInfo.split('\n').map(p => p.trim());
-                const subject = parts[0] || 'Предмет';
+            function init() {
+                const groupSelect = document.getElementById('groupSelect');
+                let allGroups = new Set();
                 
-                // Поиск кабинета
-                const roomInfo = parts.find(p => p.toLowerCase().includes('каб')) || '';
-                // Поиск преподавателя
-                const teacherInfo = parts.find(p => p !== subject && !p.toLowerCase().includes('каб')) || '';
+                Object.values(scheduleData).forEach(dayGroups => {
+                    Object.keys(dayGroups).forEach(g => allGroups.add(g.trim()));
+                });
 
-                container.innerHTML += `
-                    <div class="card bg-white p-4 rounded-2xl shadow-sm">
-                        <div class="text-xs font-semibold text-blue-400 mb-1">ПАРА ${slot}</div>
-                        <div class="font-bold text-gray-800 mb-1 leading-tight">${subject}</div>
-                        <div class="text-sm text-gray-600">${teacherInfo}</div>
-                        ${roomInfo ? `<div class="text-xs text-blue-500 mt-2 font-medium bg-blue-50 inline-block px-2 py-1 rounded-lg">${roomInfo}</div>` : ''}
-                    </div>
-                `;
-            });
-        }
+                groupSelect.innerHTML = '<option value="">Выберите группу...</option>';
+                [...allGroups].sort().forEach(g => {
+                    let opt = document.createElement('option');
+                    opt.value = g; opt.innerText = g;
+                    groupSelect.appendChild(opt);
+                });
 
-        // Telegram Web App API
-        window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand();
-        
-        load();
+                groupSelect.onchange = render;
+                document.getElementById('daySelect').onchange = render;
+            }
+
+            function render() {
+                const selectedGroup = document.getElementById('groupSelect').value.trim();
+                const selectedDay = document.getElementById('daySelect').value;
+                const container = document.getElementById('scheduleContainer');
+                
+                if (!selectedGroup) return;
+                container.innerHTML = '';
+                const actualDayKey = Object.keys(scheduleData).find(key => 
+                    key.toLowerCase().includes(selectedDay.toLowerCase())
+                );
+
+                const dayData = actualDayKey ? scheduleData[actualDayKey] : null;
+                const groupLessons = dayData ? dayData[selectedGroup] : null;
+
+                if (!groupLessons || Object.keys(groupLessons).length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-20 opacity-40">
+                            <div class="text-4xl mb-2">🏖️</div>
+                            <p>На ${selectedDay} занятий не найдено</p>
+                        </div>`;
+                    return;
+                }
+
+                // Отрисовка карточек
+                Object.keys(groupLessons).sort((a, b) => parseInt(a) - parseInt(b)).forEach(slot => {
+                    const fullInfo = groupLessons[slot];
+                    const parts = fullInfo.split('\n').map(p => p.trim());
+                    
+                    // Предмет
+                    const subject = parts[0];
+                    // Кабинет
+                    const roomInfo = parts.find(p => p.toLowerCase().includes('каб') || /\d/.test(p)) || '';
+                    // Преподаватель
+                    const teacherInfo = parts.find(p => p !== subject && p !== roomInfo) || '';
+
+                    container.innerHTML += `
+                        <div class="card bg-white p-4 rounded-2xl shadow-sm border-l-4">
+                            <div class="text-xs font-semibold text-blue-400 mb-1">ПАРА ${slot}</div>
+                            <div class="font-bold text-gray-800 mb-1 leading-tight">${subject}</div>
+                            <div class="text-sm text-gray-600">${teacherInfo}</div>
+                            ${roomInfo ? `<div class="text-xs text-blue-500 mt-2 font-medium bg-blue-50 inline-block px-2 py-1 rounded-lg">${roomInfo}</div>` : ''}
+                        </div>
+                    `;
+                });
+            }
+
+            window.Telegram.WebApp.ready();
+            window.Telegram.WebApp.expand();
+            load();
+
     </script>
 </body>
 </html>
