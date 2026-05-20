@@ -21,11 +21,14 @@ def main():
         with open(output_json, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
         print(f"Результат в {output_json}")
+
+        # Синхронизация данных с веб-интерфейсом только если загрузилось
+        shutil.copy(output_json, "web/result.json")
+        print(f"✅ Данные синхронизированы с веб-интерфейсом в web/result.json")
+        # -------------------------------------
     else:
         print("Ошибка загрузки")
 
-        shutil.copy(output_json, "web/result.json")
-        print(f"✅ Данные синхронизированы с веб-интерфейсом в web/result.json")
 
 if __name__ == "__main__":
     main()
