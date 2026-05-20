@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расписание занятий</title>
+    <title>Расписание АППК</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -25,11 +25,12 @@
     <div class="max-w-md mx-auto">
         <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Расписание занятий</h1>
 
-        <!-- Селекторы -->
         <div class="space-y-3 mb-8">
             <label class="block">
                 <span class="text-sm text-gray-500 ml-2">Учебная группа</span>
-                <select id="groupSelect" class="w-full mt-1 p-3 rounded-2xl bg-white border-none shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"></select>
+                <select id="groupSelect" class="w-full mt-1 p-3 rounded-2xl bg-white border-none shadow-sm focus:ring-2 focus:ring-blue-400 outline-none">
+                    <option value="">Загрузка групп...</option>
+                </select>
             </label>
             
             <label class="block">
@@ -40,38 +41,41 @@
                     <option value="Среда">Среда</option>
                     <option value="Четверг">Четверг</option>
                     <option value="Пятница">Пятница</option>
+                    <option value="Суббота">Суббота</option>
                 </select>
             </label>
         </div>
 
-        <div id="scheduleContainer" class="space-y-4">
+        <div id="scheduleContainer" class="space-y-4 pb-10">
+            <div class="text-center py-20 opacity-40">Выберите группу для начала</div>
         </div>
     </div>
 
     <script>
         let scheduleData = {};
 
-        // Загрузка
+        // Загрузка данных
         async function load() {
             try {
                 const response = await fetch('result.json?v=' + Date.now());
                 scheduleData = await response.json();
-                
                 init();
             } catch (e) {
+                console.error(e);
                 document.getElementById('scheduleContainer').innerHTML = 
-                    `<div class="text-center text-red-500 py-10">Ошибка загрузки данных</div>`;
+                    `<div class="text-center text-red-500 py-10">Ошибка загрузки данных (result.json не найден)</div>`;
             }
         }
 
         function init() {
             const groupSelect = document.getElementById('groupSelect');
-            
             let allGroups = new Set();
             Object.values(scheduleData).forEach(dayGroups => {
                 Object.keys(dayGroups).forEach(g => allGroups.add(g));
             });
 
+            // Очищение и заполнение списка
+            groupSelect.innerHTML = '<option value="">Выберите группу...</option>';
             [...allGroups].sort().forEach(g => {
                 let opt = document.createElement('option');
                 opt.value = g; opt.innerText = g;
@@ -80,14 +84,14 @@
 
             groupSelect.onchange = render;
             document.getElementById('daySelect').onchange = render;
-            
-            render();
         }
 
         function render() {
             const day = document.getElementById('daySelect').value;
             const group = document.getElementById('groupSelect').value;
             const container = document.getElementById('scheduleContainer');
+            
+            if (!group) return;
             container.innerHTML = '';
 
             if (!scheduleData[day] || !scheduleData[day][group] || Object.keys(scheduleData[day][group]).length === 0) {
@@ -101,23 +105,32 @@
 
             const lessons = scheduleData[day][group];
             
-            Object.keys(lessons).sort().forEach(slot => {
-                const info = lessons[slot];
-                const parts = info.split('\n');
+            // Сортировка пар
+            Object.keys(lessons).sort((a, b) => parseInt(a) - parseInt(b)).forEach(slot => {
+                const fullInfo = lessons[slot];
+                const parts = fullInfo.split('\n').map(p => p.trim());
+                const subject = parts[0] || 'Предмет';
                 
+                // Поиск кабинета
+                const roomInfo = parts.find(p => p.toLowerCase().includes('каб')) || '';
+                // Поиск преподавателя
+                const teacherInfo = parts.find(p => p !== subject && !p.toLowerCase().includes('каб')) || '';
+
                 container.innerHTML += `
-                    <div class="card bg-white p-4 rounded-2xl shadow-sm border-l-4">
+                    <div class="card bg-white p-4 rounded-2xl shadow-sm">
                         <div class="text-xs font-semibold text-blue-400 mb-1">ПАРА ${slot}</div>
-                        <div class="font-bold text-gray-800 mb-1 leading-tight">${parts[0]}</div>
-                        <div class="text-sm text-gray-600">${parts[1] || ''}</div>
-                        ${parts[2] ? `<div class="text-xs text-blue-500 mt-2 font-medium">Каб: ${parts[2]}</div>` : ''}
+                        <div class="font-bold text-gray-800 mb-1 leading-tight">${subject}</div>
+                        <div class="text-sm text-gray-600">${teacherInfo}</div>
+                        ${roomInfo ? `<div class="text-xs text-blue-500 mt-2 font-medium bg-blue-50 inline-block px-2 py-1 rounded-lg">${roomInfo}</div>` : ''}
                     </div>
                 `;
             });
         }
 
+        // Telegram Web App API
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
+        
         load();
     </script>
 </body>
