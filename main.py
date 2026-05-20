@@ -17,16 +17,16 @@ def main():
         parser = ScheduleParser(input_path)
         data = parser.parse()
 
-        # Сохранение
+        # Сохранение результата в JSON
         with open(output_json, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"Результат в {output_json}")
+        print(f"Результат сохранен в {output_json}")
 
-        # Синхронизация данных с веб-интерфейсом только если загрузилось
+        # Синхронизация для Mini App
         shutil.copy(output_json, "web/result.json")
-        print(f"Данные синхронизированы с веб-интерфейсом в web/result.json")
+        print(f"✅ Данные обновлены для веба")
     else:
-        print("Ошибка загрузки")
+        print("Ошибка загрузки файла")
 
 
 if __name__ == "__main__":

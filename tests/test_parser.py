@@ -20,15 +20,14 @@ def test_parser_init():
     assert parser.file_path == path
 
 def test_parsing_result_type():
-    """Проверка логики структуры"""
+    """Проверка, что парсер возвращает словарь со структурой дней"""
     path = "data/schedule.xls"
     if os.path.exists(path):
         parser = ScheduleParser(path)
         data = parser.parse()
-        assert isinstance(data, list)
+        assert isinstance(data, dict)
     else:
-        # Если файла нет - тест пропускается 
-        pytest.skip("Файл расписания не найден для теста")
+        pytest.skip("Файл расписания не найден")
 
 def test_folder_structure():
     """Проверка наличия необходимых папок проекта"""

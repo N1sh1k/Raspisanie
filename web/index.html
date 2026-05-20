@@ -3,129 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расписание АППК</title>
+    <title>Расписание занятий</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --bg-color: #f0f2f5;
-            --card-bg: #ffffff;
-            --text-main: #333333;
-            --accent: #3b82f6;
-            --hint: #8e8e93;
-        }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0; padding: 15px;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        .header { color: var(--accent); font-weight: bold; font-size: 24px; margin-bottom: 20px; }
-        
-        select {
-            width: 100%; max-width: 400px;
-            padding: 12px; margin-bottom: 10px;
-            border-radius: 12px; border: 1px solid #ddd;
-            font-size: 16px; background: white;
-            appearance: none; outline: none;
-        }
-
-        .schedule-list { width: 100%; max-width: 400px; margin-top: 10px; }
-
+        body { background-color: #f0f2f5; }
         .card {
-            background: var(--card-bg);
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 15px;
-            position: relative;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            border-left: 5px solid var(--accent); /* Синяя полоска */
+            border-left: 4px solid #3b82f6;
+            transition: transform 0.1s;
         }
-        .pair-num { color: var(--hint); font-size: 13px; margin-bottom: 5px; }
-        .subject { font-weight: bold; font-size: 16px; margin-bottom: 5px; line-height: 1.3; }
-        .teacher { color: #666; font-size: 14px; }
-        .empty { text-align: center; color: var(--hint); margin-top: 40px; }
+        .card:active { transform: scale(0.98); }
+        select {
+            -webkit-appearance: none;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em;
+        }
     </style>
 </head>
-<body>
-    <div class="header">Расписание занятий</div>
+<body class="p-4 text-gray-800">
+    <div class="max-w-md mx-auto">
+        <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Расписание занятий</h1>
 
-    <select id="groupSelect"><option value="">Выберите группу...</option></select>
-    <select id="daySelect">
-        <option value="Понедельник">Понедельник</option>
-        <option value="Вторник">Вторник</option>
-        <option value="Среда">Среда</option>
-        <option value="Четверг">Четверг</option>
-        <option value="Пятница">Пятница</option>
-        <option value="Суббота">Суббота</option>
-    </select>
+        <!-- Селекторы -->
+        <div class="space-y-3 mb-8">
+            <label class="block">
+                <span class="text-sm text-gray-500 ml-2">Учебная группа</span>
+                <select id="groupSelect" class="w-full mt-1 p-3 rounded-2xl bg-white border-none shadow-sm focus:ring-2 focus:ring-blue-400 outline-none"></select>
+            </label>
+            
+            <label class="block">
+                <span class="text-sm text-gray-500 ml-2">День недели</span>
+                <select id="daySelect" class="w-full mt-1 p-3 rounded-2xl bg-white border-none shadow-sm focus:ring-2 focus:ring-blue-400 outline-none">
+                    <option value="Понедельник">Понедельник</option>
+                    <option value="Вторник">Вторник</option>
+                    <option value="Среда">Среда</option>
+                    <option value="Четверг">Четверг</option>
+                    <option value="Пятница">Пятница</option>
+                </select>
+            </label>
+        </div>
 
-    <div id="container" class="schedule-list"></div>
+        <div id="scheduleContainer" class="space-y-4">
+        </div>
+    </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        let scheduleData = {};
 
-        let fullData = [];
-
-        async function init() {
+        // Загрузка
+        async function load() {
             try {
                 const response = await fetch('result.json?v=' + Date.now());
-                fullData = await response.json();
-
-                const groups = [...new Set(fullData.map(item => item.group))].sort();
-                const select = document.getElementById('groupSelect');
+                scheduleData = await response.json();
                 
-                select.innerHTML = '<option value="">Выберите группу...</option>';
-                
-                groups.forEach(g => {
-                    let opt = document.createElement('option');
-                    opt.value = g; opt.innerHTML = g;
-                    select.appendChild(opt);
-                });
-
-                // Анализ изменений
-                document.getElementById('groupSelect').addEventListener('change', render);
-                document.getElementById('daySelect').addEventListener('change', render);
+                init();
             } catch (e) {
-                console.error("Ошибка загрузки данных", e);
-                document.getElementById('container').innerHTML = '<div class="empty">Ошибка базы данных</div>';
+                document.getElementById('scheduleContainer').innerHTML = 
+                    `<div class="text-center text-red-500 py-10">Ошибка загрузки данных</div>`;
             }
+        }
+
+        function init() {
+            const groupSelect = document.getElementById('groupSelect');
+            
+            let allGroups = new Set();
+            Object.values(scheduleData).forEach(dayGroups => {
+                Object.keys(dayGroups).forEach(g => allGroups.add(g));
+            });
+
+            [...allGroups].sort().forEach(g => {
+                let opt = document.createElement('option');
+                opt.value = g; opt.innerText = g;
+                groupSelect.appendChild(opt);
+            });
+
+            groupSelect.onchange = render;
+            document.getElementById('daySelect').onchange = render;
+            
+            render();
         }
 
         function render() {
-            const group = document.getElementById('groupSelect').value;
             const day = document.getElementById('daySelect').value;
-            const container = document.getElementById('container');
+            const group = document.getElementById('groupSelect').value;
+            const container = document.getElementById('scheduleContainer');
             container.innerHTML = '';
 
-            if (!group) return;
-
-            // Универсальный поиск
-            const filtered = fullData.filter(i => {
-                const sameGroup = i.group.trim() === group.trim();
-                const sameDay = i.day.toLowerCase().includes(day.toLowerCase());
-                return sameGroup && sameDay;
-            });
-
-            if (filtered.length === 0) {
-                container.innerHTML = `<div class="empty">На ${day} для группы ${group} занятий нет</div>`;
+            if (!scheduleData[day] || !scheduleData[day][group] || Object.keys(scheduleData[day][group]).length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-20 opacity-40">
+                        <div class="text-4xl mb-2">🏖️</div>
+                        <p>Занятий нет</p>
+                    </div>`;
                 return;
             }
 
-            // Сортировка по номеру пары
-            filtered.sort((a, b) => parseInt(a.slot) - parseInt(b.slot)).forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.innerHTML = `
-                    <div class="pair-num">Пара ${item.slot}</div>
-                    <div class="subject">${item.lesson}</div>
+            const lessons = scheduleData[day][group];
+            
+            Object.keys(lessons).sort().forEach(slot => {
+                const info = lessons[slot];
+                const parts = info.split('\n');
+                
+                container.innerHTML += `
+                    <div class="card bg-white p-4 rounded-2xl shadow-sm border-l-4">
+                        <div class="text-xs font-semibold text-blue-400 mb-1">ПАРА ${slot}</div>
+                        <div class="font-bold text-gray-800 mb-1 leading-tight">${parts[0]}</div>
+                        <div class="text-sm text-gray-600">${parts[1] || ''}</div>
+                        ${parts[2] ? `<div class="text-xs text-blue-500 mt-2 font-medium">Каб: ${parts[2]}</div>` : ''}
+                    </div>
                 `;
-                container.appendChild(div);
             });
         }
 
-        init();
+        window.Telegram.WebApp.ready();
+        window.Telegram.WebApp.expand();
+        load();
     </script>
 </body>
 </html>

@@ -1,59 +1,49 @@
 import pandas as pd
+import json
 
 class ScheduleParser:
     def __init__(self, file_path):
         self.file_path = file_path
+        self.schedule_data = {}
+        self.target_groups = [
+            "ТМ-11", "ИС-11", "ТИК-11", "ПДК-11", "ТМ-21", "ИС-21",
+            "ЮДК-21", "ЭДК-21", "ТИК-21", "ТМ-31", "ТМ-32", "ТЭ-31",
+            "ИС-31", "ЮД-31", "ТИК-31", "ЮДК-32", "ТМ-41", "ТЭ-41",
+            "ГД-41", "ИСК-41", "ЮДК-41"
+        ]
 
     def parse(self):
+        print(f"Парсинг файла: {self.file_path} ---")
         df = pd.read_excel(self.file_path, engine='xlrd', header=None)
-        result = []
         
+        current_day = None
+        groups_in_row = []
         days_list = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"]
-        current_day = "Неизвестно"
-        
-        # Поиск групп
-        group_row_idx = 7
-        for r in range(min(len(df), 25)): 
-            row_values = [str(val) for val in df.iloc[r].tolist()]
-            row_str = " ".join(row_values)
-            if row_str.count("-") > 5: 
-                group_row_idx = r
-                break
-        
-        groups_header = [str(g).strip() for g in df.iloc[group_row_idx].tolist()]
-        print(f"Заголовок групп найден на строке {group_row_idx + 1}")
 
-        # Перебор строк
-        for row_idx in range(group_row_idx + 1, len(df)):
-            row_data = df.iloc[row_idx]
-            
-            # Проверка названий
-            row_start_text = " ".join([str(val) for val in row_data.iloc[:5].tolist()])
-            new_day = next((day for day in days_list if day in row_start_text), None)
-            
-            if new_day:
-                current_day = new_day
-                print(f"Раздел: {current_day}")
+        for _, row in df.iterrows():
+            val = str(row[0]).strip()
+
+            if val in days_list:
+                current_day = val
+                if current_day not in self.schedule_data:
+                    self.schedule_data[current_day] = {}
                 continue
 
-            pair_num_raw = str(row_data.iloc[1]).strip()
-            slot = pair_num_raw if pair_num_raw.isdigit() and len(pair_num_raw) == 1 else "1"
+            if val == "Пара":
+                # Считывание пар
+                groups_in_row = [str(g).strip() for g in row[1:]]
+                for g in groups_in_row:
+                    if g in self.target_groups and g not in self.schedule_data[current_day]:
+                        self.schedule_data[current_day][g] = {}
+                continue
 
-            # Перебор столбцов
-            for col_idx, group_name in enumerate(groups_header):
-                if "-" not in group_name or "nan" in group_name.lower():
-                    continue
+            if val.isdigit() and current_day:
+                slot_num = str(val) # номер пары
+                for i, group_name in enumerate(groups_in_row):
+                    if group_name in self.target_groups:
+                        lesson_info = str(row[i + 1]).strip()
+                        if lesson_info and lesson_info.lower() != 'nan' and len(lesson_info) > 4:
+                            self.schedule_data[current_day][group_name][slot_num] = lesson_info
 
-                lesson_raw = df.iloc[row_idx, col_idx]
-                lesson = str(lesson_raw).strip()
-                
-                if lesson and lesson.lower() != 'nan' and len(lesson) > 4:
-                    result.append({
-                        "day": current_day,
-                        "group": group_name,
-                        "lesson": lesson.replace('\n', ' '),
-                        "slot": slot
-                    })
-
-        print(f"Собрано занятий: {len(result)}")
-        return result
+        print(f"Найдено групп с уроками: {len(self.schedule_data.get('Понедельник', {}))}")
+        return self.schedule_data
