@@ -70,23 +70,26 @@
 
         async function init() {
             try {
-                const response = await fetch('result.json');
+                const response = await fetch('result.json?v=' + Date.now());
                 fullData = await response.json();
 
-                // Заполнение списка групп
                 const groups = [...new Set(fullData.map(item => item.group))].sort();
                 const select = document.getElementById('groupSelect');
+                
+                select.innerHTML = '<option value="">Выберите группу...</option>';
+                
                 groups.forEach(g => {
                     let opt = document.createElement('option');
                     opt.value = g; opt.innerHTML = g;
                     select.appendChild(opt);
                 });
 
-                // Проверка изменений
+                // Анализ изменений
                 document.getElementById('groupSelect').addEventListener('change', render);
                 document.getElementById('daySelect').addEventListener('change', render);
             } catch (e) {
                 console.error("Ошибка загрузки данных", e);
+                document.getElementById('container').innerHTML = '<div class="empty">Ошибка базы данных</div>';
             }
         }
 
@@ -98,15 +101,20 @@
 
             if (!group) return;
 
-            const filtered = fullData.filter(i => i.group === group && i.day === day);
+            // Универсальный поиск
+            const filtered = fullData.filter(i => {
+                const sameGroup = i.group.trim() === group.trim();
+                const sameDay = i.day.toLowerCase().includes(day.toLowerCase());
+                return sameGroup && sameDay;
+            });
 
             if (filtered.length === 0) {
-                container.innerHTML = '<div class="empty">Пар не найдено</div>';
+                container.innerHTML = `<div class="empty">На ${day} для группы ${group} занятий нет</div>`;
                 return;
             }
 
             // Сортировка по номеру пары
-            filtered.sort((a, b) => a.slot - b.slot).forEach(item => {
+            filtered.sort((a, b) => parseInt(a.slot) - parseInt(b.slot)).forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'card';
                 div.innerHTML = `
