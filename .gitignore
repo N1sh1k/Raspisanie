@@ -14,3 +14,4 @@ data/result.json
 
 .cursor/
 .idea/
+.pytest_cache/

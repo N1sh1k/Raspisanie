@@ -1,4 +1,5 @@
 import json
+import shutil
 from src.downloader import ScheduleDownloader
 from src.parser import ScheduleParser
 
@@ -22,6 +23,9 @@ def main():
         print(f"Результат в {output_json}")
     else:
         print("Ошибка загрузки")
+
+        shutil.copy(output_json, "web/result.json")
+        print(f"✅ Данные синхронизированы с веб-интерфейсом в web/result.json")
 
 if __name__ == "__main__":
     main()
