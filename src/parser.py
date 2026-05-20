@@ -12,31 +12,48 @@ class ScheduleParser:
         current_day = "Неизвестно"
         
         # Поиск групп
-        group_row_idx = 7 
-        groups = df.iloc[group_row_idx, :].tolist()
+        group_row_idx = 7
+        for r in range(min(len(df), 25)): 
+            row_values = [str(val) for val in df.iloc[r].tolist()]
+            row_str = " ".join(row_values)
+            if row_str.count("-") > 5: 
+                group_row_idx = r
+                break
         
+        groups_header = [str(g).strip() for g in df.iloc[group_row_idx].tolist()]
+        print(f"Заголовок групп найден на строке {group_row_idx + 1}")
+
+        # Перебор строк
         for row_idx in range(group_row_idx + 1, len(df)):
-            # Проверка
-            first_col_val = str(df.iloc[row_idx, 0]).strip()
-            if first_col_val in days_list:
-                current_day = first_col_val
+            row_data = df.iloc[row_idx]
+            
+            # Проверка названий
+            row_start_text = " ".join([str(val) for val in row_data.iloc[:5].tolist()])
+            new_day = next((day for day in days_list if day in row_start_text), None)
+            
+            if new_day:
+                current_day = new_day
+                print(f"Раздел: {current_day}")
                 continue
 
-            # Номер пары
-            slot_raw = str(df.iloc[row_idx, 1]).strip()
-            slot = slot_raw if slot_raw.isdigit() else "1"
+            pair_num_raw = str(row_data.iloc[1]).strip()
+            slot = pair_num_raw if pair_num_raw.isdigit() and len(pair_num_raw) == 1 else "1"
 
-            for col_idx, group_name in enumerate(groups):
-                group_name = str(group_name).strip()
-                if "-" not in group_name or len(group_name) < 3:
+            # Перебор столбцов
+            for col_idx, group_name in enumerate(groups_header):
+                if "-" not in group_name or "nan" in group_name.lower():
                     continue
 
-                lesson_data = str(df.iloc[row_idx, col_idx]).strip()
-                if lesson_data and lesson_data.lower() != 'nan' and len(lesson_data) > 3:
+                lesson_raw = df.iloc[row_idx, col_idx]
+                lesson = str(lesson_raw).strip()
+                
+                if lesson and lesson.lower() != 'nan' and len(lesson) > 4:
                     result.append({
                         "day": current_day,
                         "group": group_name,
-                        "lesson": lesson_data.replace('\n', ' '),
+                        "lesson": lesson.replace('\n', ' '),
                         "slot": slot
                     })
+
+        print(f"Собрано занятий: {len(result)}")
         return result
