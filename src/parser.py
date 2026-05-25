@@ -25,7 +25,7 @@ class ScheduleParser:
                 break
         
         if header_row_idx is None:
-            print("Строка с названиями групп не найдена!")
+            print("Строка с названиями групп не найдена")
             return {}
 
         # Создание колонок
@@ -72,3 +72,15 @@ class ScheduleParser:
 
         print(f"Сгруппировано данных для дней: {len(schedule_result)}")
         return schedule_result
+
+
+
+
+
+
+
+
+
+
+
+        

@@ -24,6 +24,7 @@ def main():
 
         # Синхронизация для Mini App
         shutil.copy(output_json, "web/result.json")
+        shutil.copy(input_path, "web/schedule.xls")
         print(f"✅ Данные обновлены для веба")
     else:
         print("Ошибка загрузки файла")

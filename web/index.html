@@ -2,125 +2,212 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Расписание занятий</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Расписание АППК</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background-color: #f0f2f5; }
-        .card { border-left: 4px solid #3b82f6; }
-        select {
-            -webkit-appearance: none;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat; background-position: right 1rem center; background-size: 1em;
+        /* Использование цветов из настроек Telegram пользователя */
+        body { 
+            background-color: var(--tg-theme-bg-color, #f0f2f5); 
+            color: var(--tg-theme-text-color, #222);
+            transition: all 0.3s;
+            -webkit-user-select: none;
+        }
+        .card { 
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+            border-left: 4px solid var(--tg-theme-button-color, #3b82f6); 
+        }
+        select { 
+            background-color: var(--tg-theme-secondary-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #222);
+            -webkit-appearance: none; 
+            appearance: none; 
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); 
+            background-repeat: no-repeat; 
+            background-position: right 1rem center; 
+            background-size: 1em; 
+        }
+        
+        #gearBtn { 
+            position: fixed; bottom: 25px; right: 20px; 
+            width: 50px; height: 50px; 
+            background-color: var(--tg-theme-button-color, #2481cc); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            z-index: 100; cursor: pointer; 
+            font-size: 26px; transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+        }
+        #gearBtn.active { transform: rotate(90deg) scale(1.1); }
+
+        #settingsMenu { 
+            position: fixed; bottom: -300px; left: 0; 
+            width: 100%; 
+            background-color: var(--tg-theme-secondary-bg-color, white); 
+            border-radius: 25px 25px 0 0; 
+            padding: 25px; 
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.15); 
+            z-index: 95; 
+            transition: bottom 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        #settingsMenu.open { bottom: 0; }
+
+        .overlay { 
+            position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: rgba(0,0,0,0.4); 
+            backdrop-filter: blur(2px);
+            z-index: 90; display:none; 
+        }
+        .overlay.active { display:block; }
+        
+        .download-btn {
+            background-color: var(--tg-theme-bg-color, #f9fafb);
+            border: 1px solid var(--tg-theme-hint-color, #e5e7eb);
+            color: var(--tg-theme-button-color, #3b82f6);
         }
     </style>
 </head>
-<body class="p-4 text-gray-800">
+<body class="p-4">
     <div class="max-w-md mx-auto">
-        <h1 class="text-2xl font-bold text-center mb-6 text-blue-600">Расписание занятий</h1>
+        <h1 class="text-2xl font-bold text-center mb-6" style="color: var(--tg-theme-button-color, #3b82f6)">Расписание занятий</h1>
 
-        <div class="space-y-3 mb-8">
-            <label class="block">
-                <span class="text-sm text-gray-500 ml-2">Учебная группа</span>
-                <select id="groupSelect" class="w-full mt-1 p-3 rounded-2xl bg-white border-none shadow-sm outline-none"></select>
-            </label>
+        <div class="space-y-4 mb-8">
+            <div class="relative">
+                <span class="text-xs font-semibold uppercase tracking-wider ml-2 opacity-60">Учебная группа</span>
+                <select id="groupSelect" class="w-full mt-1 p-3 rounded-2xl shadow-sm outline-none border-none"></select>
+            </div>
             
-            <label class="block">
-                <span class="text-sm text-gray-500 ml-2">Дата (День недели)</span>
-                <select id="daySelect" class="w-full mt-1 p-3 rounded-2xl bg-white border-none shadow-sm outline-none">
-                    <option value="">Сначала выберите группу</option>
+            <div class="relative">
+                <span class="text-xs font-semibold uppercase tracking-wider ml-2 opacity-60">День недели</span>
+                <select id="daySelect" class="w-full mt-1 p-3 rounded-2xl shadow-sm outline-none border-none">
+                    <option value="Понедельник">Понедельник</option>
+                    <option value="Вторник">Вторник</option>
+                    <option value="Среда">Среда</option>
+                    <option value="Четверг">Четверг</option>
+                    <option value="Пятница">Пятница</option>
                 </select>
-            </label>
+            </div>
         </div>
 
-        <div id="scheduleContainer" class="space-y-4 pb-10">
-            <div class="text-center py-20 opacity-30">Выберите группу для просмотра</div>
+        <div id="scheduleContainer" class="space-y-4 pb-28"></div>
+    </div>
+
+    <!-- Интерфейс настроек -->
+    <div id="gearBtn" onclick="toggleSettings()">⚙️</div>
+    <div id="overlay" class="overlay" onclick="toggleSettings()"></div>
+    
+    <div id="settingsMenu">
+        <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4 opacity-30"></div>
+        <h3 class="text-center font-bold text-lg mb-6">Загрузка документов</h3>
+        <div class="grid grid-cols-1 gap-4">
+            <a href="schedule.xls" download class="download-btn w-full p-4 rounded-2xl flex items-center justify-between font-bold">
+                <span class="flex items-center">Excel Расписание 📄</span>
+                <span class="opacity-50">.XLS</span>
+            </a>
+            <a href="result.json" download class="download-btn w-full p-4 rounded-2xl flex items-center justify-between font-bold">
+                <span class="flex items-center">JSON База данных 📊</span>
+                <span class="opacity-50">.JSON</span>
+            </a>
+        </div>
+        <div class="mt-8 text-center">
+            <p class="text-sm opacity-50 font-medium">Версия парсера 2.4.1</p>
+            <p class="text-xs opacity-30 mt-1">N1sh1k Production • 2026</p>
         </div>
     </div>
 
     <script>
+        const tg = window.Telegram.WebApp;
         let scheduleData = {};
         const rusDays = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+
+        // Настройка цветов ТГ и расширение
+        tg.expand();
+        tg.ready();
+
+        function toggleSettings() {
+            // Легкая вибрация при клике
+            if (tg.HapticFeedback) tg.HapticFeedback.impactOccurred('medium');
+            
+            document.getElementById('settingsMenu').classList.toggle('open');
+            document.getElementById('overlay').classList.toggle('active');
+            document.getElementById('gearBtn').classList.toggle('active');
+        }
 
         async function load() {
             try {
                 const response = await fetch('result.json?v=' + Date.now());
                 scheduleData = await response.json();
-                
-                // Заполнение группы
-                const groupSelect = document.getElementById('groupSelect');
-                let allGroups = new Set();
-                Object.values(scheduleData).forEach(dayContent => {
-                    Object.keys(dayContent).forEach(g => allGroups.add(g));
-                });
-                
-                groupSelect.innerHTML = '<option value="">Выберите группу...</option>';
-                [...allGroups].sort().forEach(g => {
-                    let opt = document.createElement('option');
-                    opt.value = g; opt.innerText = g;
-                    groupSelect.appendChild(opt);
-                });
-
-                groupSelect.onchange = populateDays;
-                document.getElementById('daySelect').onchange = render;
-
+                initGroups();
             } catch (e) {
-                document.getElementById('scheduleContainer').innerHTML = '<div class="text-center text-red-500">Ошибка загрузки</div>';
+                document.getElementById('scheduleContainer').innerHTML = 
+                    '<div class="text-center py-20 text-red-500 font-bold">⚠️ Ошибка связи с базой данных</div>';
             }
         }
 
-        function populateDays() {
-            const group = document.getElementById('groupSelect').value;
-            const daySelect = document.getElementById('daySelect');
-            daySelect.innerHTML = '';
-
-            if (!group) return;
-
-            // Поиск даты
-            Object.keys(scheduleData).forEach(dateStr => {
-                if (scheduleData[dateStr][group]) {
-                    const dateObj = new Date(dateStr);
-                    const dayName = rusDays[dateObj.getDay()];
-                    // Форматирование даты
-                    const shortDate = dateObj.toLocaleDateString('ru-RU', {day: '2-digit', month: '2-digit'});
-                    
-                    let opt = document.createElement('option');
-                    opt.value = dateStr;
-                    opt.innerText = `${shortDate} (${dayName})`;
-                    daySelect.appendChild(opt);
-                }
+        function initGroups() {
+            const groupSelect = document.getElementById('groupSelect');
+            let allGroups = new Set();
+            Object.values(scheduleData).forEach(day => Object.keys(day).forEach(g => allGroups.add(g)));
+            
+            groupSelect.innerHTML = '<option value="">Выберите группу...</option>';
+            [...allGroups].sort().forEach(g => {
+                let opt = document.createElement('option');
+                opt.value = g; opt.text = g;
+                groupSelect.add(opt);
             });
-            render();
+
+            groupSelect.onchange = render;
+            document.getElementById('daySelect').onchange = render;
         }
 
         function render() {
-            const dateKey = document.getElementById('daySelect').value;
-            const group = document.getElementById('groupSelect').value;
+            const selectedDayName = document.getElementById('daySelect').value;
+            const selectedGroupName = document.getElementById('groupSelect').value;
             const container = document.getElementById('scheduleContainer');
             
+            if (!selectedGroupName) {
+                container.innerHTML = '<div class="text-center py-20 opacity-30">Выберите учебную группу выше</div>';
+                return;
+            }
             container.innerHTML = '';
-            if (!dateKey || !group) return;
 
-            const lessons = scheduleData[dateKey][group];
+            // Поиск ключа даты по имени дня недели
+            const dateKey = Object.keys(scheduleData).find(key => {
+                const d = new Date(key);
+                return rusDays[d.getDay()] === selectedDayName;
+            });
 
+            if (!dateKey || !scheduleData[dateKey][selectedGroupName]) {
+                container.innerHTML = `
+                    <div class="text-center py-20 animate-pulse">
+                        <div class="text-5xl mb-4">🍺</div>
+                        <p class="font-bold opacity-40">Пар не найдено</p>
+                        <p class="text-sm opacity-20">наслаждайтесь отдыхом</p>
+                    </div>`;
+                return;
+            }
+
+            const lessons = scheduleData[dateKey][selectedGroupName];
+            
             Object.keys(lessons).sort((a,b) => parseInt(a)-parseInt(b)).forEach(slot => {
                 const text = lessons[slot];
-                const parts = text.split('\n');
-                
+                // Разделяем строки, если они есть
+                const lines = text.split('\n');
+                const title = lines[0];
+                const subtitle = lines.slice(1).join(' | ');
+
                 container.innerHTML += `
-                    <div class="card bg-white p-4 rounded-2xl shadow-sm">
-                        <div class="text-xs font-semibold text-blue-400 mb-1">ПАРА ${slot}</div>
-                        <div class="font-bold text-gray-800 leading-tight">${parts[0]}</div>
-                        <div class="text-sm text-gray-600 mt-1">${parts[1] || ''}</div>
-                    </div>
-                `;
+                    <div class="card p-4 rounded-3xl shadow-sm mb-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded-full" style="background: var(--tg-theme-button-color, #3b82f6); color: white;">Пара ${slot}</span>
+                        </div>
+                        <div class="font-extrabold text-lg leading-tight mb-1">${title}</div>
+                        <div class="text-sm opacity-60 font-medium">${subtitle}</div>
+                    </div>`;
             });
         }
 
-        window.Telegram.WebApp.ready();
-        window.Telegram.WebApp.expand();
         load();
     </script>
 </body>
