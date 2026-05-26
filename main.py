@@ -4,7 +4,7 @@ from src.downloader import ScheduleDownloader
 from src.parser import ScheduleParser
 
 def main():
-    url = "https://t706222.spo.obrazovanie33.ru/upload/site_files/22/8%20апреля.xls" 
+    url = "https://t706222.spo.obrazovanie33.ru/studentam/raspisanie-zanyatij/" 
     input_path = "data/schedule.xls"
     output_json = "data/result.json"
 
